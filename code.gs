@@ -1,243 +1,190 @@
 /**
- * PORTAL DMS ENGINE V2 - OPTIMIZED BACKEND API (Google Apps Script)
+ * GAS-Bloger V2 II Backend Engine
+ * Menangani routing GET dan POST dengan keamanan CORS dan JSON Response murni.
  */
 
 function doGet(e) {
-  return handleRequest(e);
+  return handleRequest(e, 'GET');
 }
 
 function doPost(e) {
-  return handleRequest(e);
+  return handleRequest(e, 'POST');
 }
 
-function handleRequest(e) {
-  var action = e && e.parameter ? e.parameter.action : "";
-  var postData = {};
-  
-  if (e && e.postData && e.postData.contents) {
-    try {
-      postData = JSON.parse(e.postData.contents);
-      if (!action) action = postData.action;
-    } catch (err) {}
-  }
-
-  var response = { status: "error", message: "Invalid Action" };
-
+function handleRequest(e, method) {
   try {
-    if (action === "getMenus") {
-      response = getMenus(e.parameter.userId || postData.userId, e.parameter.role || postData.role);
-    } else if (action === "saveMenu") {
-      response = saveMenu(postData);
-    } else if (action === "deleteMenu") {
-      response = deleteMenu(postData.id);
-    } else if (action === "login") {
-      response = processLogin(postData.username, postData.password);
-    } else if (action === "getUsers") {
-      response = getUsers();
-    } else if (action === "saveUser") {
-      response = saveUser(postData);
-    } else if (action === "deleteUser") {
-      response = deleteUser(postData.userId);
-    }
-  } catch (err) {
-    response = { status: "error", message: err.toString() };
-  }
+    const params = method === 'GET' ? e.parameter : JSON.parse(e.postData.contents || "{}");
+    const action = params.action || 'getMenus';
+    
+    let result = { status: 'error', message: 'Aksi tidak dikenal.' };
 
-  return ContentService.createTextOutput(JSON.stringify(response))
+    if (action === 'getMenus') {
+      result = getMenusData(params.userId, params.role);
+    } else if (action === 'login') {
+      result = authenticateUser(params.username, params.password);
+    } else if (action === 'saveMenu') {
+      result = saveMenuData(params);
+    } else if (action === 'deleteMenu') {
+      result = deleteMenuData(params.id);
+    } else if (action === 'getUsers') {
+      result = getAllUsers();
+    } else if (action === 'saveUser') {
+      result = saveUserData(params);
+    } else if (action === 'deleteUser') {
+      result = deleteUserData(params.userId);
+    }
+
+    return createJsonResponse(result);
+  } catch (err) {
+    return createJsonResponse({
+      status: 'error',
+      message: 'Kesalahan Server Internal: ' + err.toString()
+    });
+  }
+}
+
+function createJsonResponse(data) {
+  return ContentService.createTextOutput(JSON.stringify(data))
     .setMimeType(ContentService.MimeType.JSON);
 }
 
-// ------------------- HELPER SPREADSHEET ------------------- //
-function getSheet(sheetName) {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var sheet = ss.getSheetByName(sheetName);
+function getSheet(name) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName(name);
   if (!sheet) {
-    throw new Error("Tab Sheet '" + sheetName + "' tidak ditemukan. Harap buat tab tersebut!");
+    sheet = ss.insertSheet(name);
+    if (name === 'Menus') {
+      sheet.appendRow(['id', 'parentId', 'title', 'category', 'visibility', 'type', 'iconClass', 'targetUrl', 'description', 'ownerUserId']);
+    } else if (name === 'Users') {
+      sheet.appendRow(['userId', 'username', 'password', 'fullName', 'role']);
+      // Default Admin
+      sheet.appendRow(['ADM-01', 'admin', 'admin123', 'Super Administrator', 'ADMIN']);
+    }
   }
   return sheet;
 }
 
-// ------------------- LOGIKA MENUS ------------------- //
-function getMenus(userId, role) {
-  var sheet = getSheet("Menus");
-  var data = sheet.getDataRange().getValues();
-  if (data.length <= 1) return { status: "success", data: [] };
+function getMenusData(userId, role) {
+  const sheet = getSheet('Menus');
+  const rows = sheet.getDataRange().getValues();
+  if (rows.length <= 1) return { status: 'success', data: [] };
 
-  var rawMenus = [];
-  for (var i = 1; i < data.length; i++) {
-    var row = data[i];
-    var menuObj = {
-      id: String(row[0]),
-      parentId: String(row[1] || ""),
-      title: String(row[2] || ""),
-      category: String(row[3] || ""),
-      type: String(row[4] || "link"),
-      iconClass: String(row[5] || "fas fa-link"),
-      targetUrl: String(row[6] || "#"),
-      description: String(row[7] || ""),
-      ownerUserId: String(row[8] || ""),
-      visibility: String(row[9] || "UMUM"),
-      createdAt: String(row[10] || "")
-    };
-
-    var isVisible = false;
-    if (menuObj.visibility === "UMUM") {
-      isVisible = true;
-    } else if (role === "ADMIN") {
-      isVisible = true;
-    } else if (menuObj.visibility === "PRIVASI" && userId && userId === menuObj.ownerUserId) {
-      isVisible = true;
-    } else if (menuObj.visibility === "PRIVASI_ADMIN" && (role === "ADMIN" || userId === menuObj.ownerUserId)) {
-      isVisible = true;
-    }
-
-    if (isVisible) {
-      rawMenus.push(menuObj);
-    }
-  }
-
-  var tree = [];
-  var menuMap = {};
-
-  rawMenus.forEach(function(item) {
-    item.submenus = [];
-    menuMap[item.id] = item;
+  const headers = rows[0];
+  const dataRows = rows.slice(1);
+  
+  let allMenus = dataRows.map(row => {
+    let obj = {};
+    headers.forEach((h, i) => obj[h] = row[i]);
+    return obj;
   });
 
-  rawMenus.forEach(function(item) {
-    if (item.parentId && menuMap[item.parentId]) {
-      menuMap[item.parentId].submenus.push(item);
-    } else {
-      tree.push(item);
-    }
+  // Filter visibility
+  let filtered = allMenus.filter(item => {
+    if (item.visibility === 'UMUM') return true;
+    if (role === 'ADMIN') return true;
+    if (item.ownerUserId && item.ownerUserId === userId) return true;
+    return false;
   });
 
-  return { status: "success", data: tree };
+  // Build tree structure (Root & Submenus)
+  let rootMenus = filtered.filter(item => !item.parentId || item.parentId === 'ROOT');
+  rootMenus.forEach(root => {
+    root.submenus = filtered.filter(sub => sub.parentId === root.id);
+  });
+
+  return { status: 'success', data: rootMenus };
 }
 
-function saveMenu(p) {
-  var sheet = getSheet("Menus");
-  var data = sheet.getDataRange().getValues();
-  var menuId = p.id;
-  var now = new Date().toISOString();
-
-  if (menuId) {
-    for (var i = 1; i < data.length; i++) {
-      if (String(data[i][0]) === String(menuId)) {
-        // Optimasi: Update menggunakan array 2D tunggal setRange() alih-alih berulang kali
-        var updatedRow = [
-          data[i][0],
-          p.parentId || "",
-          p.title,
-          p.category || "",
-          p.type || "link",
-          p.iconClass || "fas fa-link",
-          p.targetUrl || "#",
-          p.description || "",
-          data[i][8], // Pertahankan ownerUserId asli
-          p.visibility || "UMUM",
-          data[i][10]
-        ];
-        sheet.getRange(i + 1, 1, 1, updatedRow.length).setValues([updatedRow]);
-        return { status: "success", message: "Data menu berhasil diperbarui." };
-      }
-    }
-  }
-
-  var newId = "MENU-" + new Date().getTime();
-  sheet.appendRow([
-    newId,
-    p.parentId || "",
-    p.title,
-    p.category || "",
-    p.type || "link",
-    p.iconClass || "fas fa-link",
-    p.targetUrl || "#",
-    p.description || "",
-    p.ownerUserId || "PUBLIC",
-    p.visibility || "UMUM",
-    now
-  ]);
-
-  return { status: "success", message: "Data menu baru berhasil ditambahkan." };
-}
-
-function deleteMenu(id) {
-  var sheet = getSheet("Menus");
-  var data = sheet.getDataRange().getValues();
-
-  for (var i = 1; i < data.length; i++) {
-    if (String(data[i][0]) === String(id)) {
-      sheet.deleteRow(i + 1);
-      return { status: "success", message: "Menu berhasil dihapus." };
-    }
-  }
-  return { status: "error", message: "ID Menu tidak ditemukan." };
-}
-
-// ------------------- LOGIKA USERS & AUTH ------------------- //
-function processLogin(username, password) {
-  var sheet = getSheet("Users");
-  var data = sheet.getDataRange().getValues();
-
-  for (var i = 1; i < data.length; i++) {
-    if (String(data[i][1]).trim() === String(username).trim() && String(data[i][2]).trim() === String(password).trim()) {
+function authenticateUser(username, password) {
+  const sheet = getSheet('Users');
+  const rows = sheet.getDataRange().getValues();
+  for (let i = 1; i < rows.length; i++) {
+    if (rows[i][1] === username && rows[i][2] === password) {
       return {
-        status: "success",
+        status: 'success',
         user: {
-          userId: String(data[i][0]),
-          username: String(data[i][1]),
-          fullName: String(data[i][3]),
-          role: String(data[i][4])
+          userId: rows[i][0],
+          username: rows[i][1],
+          fullName: rows[i][3],
+          role: rows[i][4]
         }
       };
     }
   }
-  return { status: "error", message: "Username atau Password salah." };
+  return { status: 'error', message: 'Username atau password salah!' };
 }
 
-function getUsers() {
-  var sheet = getSheet("Users");
-  var data = sheet.getDataRange().getValues();
-  var users = [];
-
-  for (var i = 1; i < data.length; i++) {
-    users.push({
-      userId: String(data[i][0]),
-      username: String(data[i][1]),
-      password: String(data[i][2]),
-      fullName: String(data[i][3]),
-      role: String(data[i][4])
-    });
-  }
-  return { status: "success", data: users };
-}
-
-function saveUser(p) {
-  var sheet = getSheet("Users");
-  var data = sheet.getDataRange().getValues();
-
-  for (var i = 1; i < data.length; i++) {
-    if (String(data[i][0]) === String(p.userId)) {
-      var updatedRow = [p.userId, p.username, p.password, p.fullName, p.role];
-      sheet.getRange(i + 1, 1, 1, updatedRow.length).setValues([updatedRow]);
-      return { status: "success", message: "Data User berhasil diperbarui." };
+function saveMenuData(p) {
+  const sheet = getSheet('Menus');
+  const rows = sheet.getDataRange().getValues();
+  let id = p.id;
+  
+  if (!id) {
+    id = 'MN-' + Date.now();
+    sheet.appendRow([id, p.parentId || 'ROOT', p.title, p.category, p.visibility, p.type, p.iconClass, p.targetUrl, p.description, p.ownerUserId]);
+  } else {
+    for (let i = 1; i < rows.length; i++) {
+      if (rows[i][0] === id) {
+        sheet.getRange(i + 1, 2, 1, 9).setValues([[
+          p.parentId || 'ROOT', p.title, p.category, p.visibility, p.type, p.iconClass, p.targetUrl, p.description, p.ownerUserId
+        ]]);
+        break;
+      }
     }
   }
-
-  sheet.appendRow([p.userId, p.username, p.password, p.fullName, p.role]);
-  return { status: "success", message: "User baru berhasil dibuat." };
+  return { status: 'success', message: 'Data menu berhasil disimpan.' };
 }
 
-function deleteUser(userId) {
-  var sheet = getSheet("Users");
-  var data = sheet.getDataRange().getValues();
-
-  for (var i = 1; i < data.length; i++) {
-    if (String(data[i][0]) === String(userId)) {
+function deleteMenuData(id) {
+  const sheet = getSheet('Menus');
+  const rows = sheet.getDataRange().getValues();
+  for (let i = 1; i < rows.length; i++) {
+    if (rows[i][0] === id) {
       sheet.deleteRow(i + 1);
-      return { status: "success", message: "User berhasil dihapus." };
+      return { status: 'success', message: 'Menu berhasil dihapus.' };
     }
   }
-  return { status: "error", message: "User ID tidak ditemukan." };
+  return { status: 'error', message: 'Menu tidak ditemukan.' };
+}
+
+function getAllUsers() {
+  const sheet = getSheet('Users');
+  const rows = sheet.getDataRange().getValues();
+  const users = rows.slice(1).map(r => ({
+    userId: r[0],
+    username: r[1],
+    fullName: r[3],
+    role: r[4]
+  }));
+  return { status: 'success', data: users };
+}
+
+function saveUserData(p) {
+  const sheet = getSheet('Users');
+  const rows = sheet.getDataRange().getValues();
+  let found = false;
+  
+  for (let i = 1; i < rows.length; i++) {
+    if (rows[i][0] === p.userId) {
+      sheet.getRange(i + 1, 2, 1, 4).setValues([[p.username, p.password, p.fullName, p.role]]);
+      found = true;
+      break;
+    }
+  }
+  if (!found) {
+    sheet.appendRow([p.userId, p.username, p.password, p.fullName, p.role]);
+  }
+  return { status: 'success', message: 'Data user berhasil disimpan.' };
+}
+
+function deleteUserData(userId) {
+  const sheet = getSheet('Users');
+  const rows = sheet.getDataRange().getValues();
+  for (let i = 1; i < rows.length; i++) {
+    if (rows[i][0] === userId) {
+      sheet.deleteRow(i + 1);
+      return { status: 'success', message: 'User berhasil dihapus.' };
+    }
+  }
+  return { status: 'error', message: 'User tidak ditemukan.' };
 }
