@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Portal DMS ALTEN</title>
 
-  <!-- CDN Assets -->
+  <!-- Tailwind CSS & FontAwesome CDN Assets -->
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -23,10 +23,9 @@
       position: fixed !important; top: 0 !important; left: 0 !important;
       width: 100vw !important; height: 100vh !important; background-color: #f8fafc !important;
       z-index: 999999 !important; overflow-y: auto !important; padding: 20px !important;
-      color: #1e293b !important; /* Isolasi warna teks agar selalu gelap di atas background terang */
+      color: #1e293b !important;
     }
 
-    /* Mencegah CSS bawaan Blogger/Tema memaksakan warna teks putih di dalam portal */
     #portal-root-wrapper h1, 
     #portal-root-wrapper h2, 
     #portal-root-wrapper h3, 
@@ -125,7 +124,6 @@
         </div>
       </header>
 
-      <!-- Main Content Container -->
       <main class="space-y-6">
         <div id="breadcrumbBar" class="flex items-center space-x-2">
           <button onclick="loadPage('ROOT')" class="px-3 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-xl text-xs font-bold flex items-center gap-1.5 hover:bg-emerald-100 transition-all">
@@ -133,7 +131,7 @@
           </button>
         </div>
 
-        <!-- Hero / Header Banner with In-line Search Field -->
+        <!-- Hero Banner with Search Bar -->
         <div class="relative overflow-hidden rounded-3xl bg-white border border-slate-200 p-6 sm:p-8 shadow-sm">
           <span class="inline-block px-3 py-1 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 mb-3">
             Selamat Datang di Portal Data Management System
@@ -293,7 +291,6 @@
           <button onclick="closeUserFormModal()" class="text-slate-400 hover:text-slate-600"><i class="fas fa-times"></i></button>
         </div>
         <form onsubmit="executeSaveUser(event)" class="space-y-3">
-          
           <div>
             <label class="block text-[11px] font-semibold text-slate-600 mb-1">User ID</label>
             <input type="text" id="userFormId" placeholder="misal: USR-001 / ADM-01" required class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-none focus:border-purple-500">
@@ -338,13 +335,14 @@
   </div>
 
   <script>
-    // URL Web App Apps Script milik Anda
-    const GAS_API_URL = "https://script.google.com/macros/s/AKfycbwYLOGaLCXPVa7GDLfzhR6X9sqtT1uk8U6Y7gTuyiCLh6XSiEs1J9hekYZimN8Oa7M/exec";
+    // URL Web App Google Apps Script Anda (Ganti dengan deployment URL terbaru)
+    const GAS_API_URL = "https://script.google.com/macros/s/AKfycbw50MqzDwbeLeZyBcWmX_I8KhwP9kHLy9EJHnpu3h-VgOdtMXDf-SmUu5vnpl8gxZ4h/exec";
     
     let rootMenus = [];
     let usersList = [];
     let currentUser = null;
     let activePageId = "ROOT";
+    let searchKeyword = "";
 
     document.addEventListener('DOMContentLoaded', () => {
       const savedUser = localStorage.getItem('portal_currentUser');
@@ -459,25 +457,22 @@
               <button onclick="loadPage('${menu.id}')" class="px-3 py-1.5 bg-white hover:bg-slate-100 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 flex items-center gap-2 shadow-sm transition-all">
                 <i class="${menu.iconClass || 'fas fa-link'} text-emerald-600"></i>
                 <span>${menu.title}</span>
-                <i class="fas fa-chevron-down text-[10px] text-slate-400"></i>
+                <i class="fas fa-chevron-down text-[9px] text-slate-400"></i>
               </button>
               <div class="dropdown-box">
-                <div class="flex justify-between items-center text-[10px] font-bold text-slate-400 uppercase px-2 py-1 border-b border-slate-100 mb-1">
-                  <span>SUB HALAMAN</span>
-                  ${currentUser ? `<button onclick="openCrudModal(null, '${menu.id}')" class="text-emerald-600 font-bold">+ Sub</button>` : ''}
-                </div>
+                <div class="text-[10px] uppercase font-bold text-slate-400 px-3 py-1 border-b border-slate-100 mb-1">Sub Modul</div>
                 ${menu.submenus.map(sub => `
-                  <div onclick="handleCardAction('${sub.id}')" class="flex items-center justify-between px-2.5 py-2 rounded-lg hover:bg-slate-50 cursor-pointer group transition-colors">
-                    <span class="text-xs text-slate-600 group-hover:text-emerald-600 font-medium">${sub.title}</span>
-                    <i class="fas fa-chevron-right text-[10px] text-slate-300"></i>
-                  </div>
+                  <a href="${sub.targetUrl}" ${sub.targetUrl !== '#' ? 'target="_blank"' : `onclick="loadPage('${sub.id}'); return false;"`} class="flex items-center space-x-2 px-3 py-2 hover:bg-slate-50 rounded-lg text-xs font-medium text-slate-700 transition-all">
+                    <i class="${sub.iconClass || 'fas fa-link'} text-emerald-600 w-4"></i>
+                    <span class="truncate">${sub.title}</span>
+                  </a>
                 `).join('')}
               </div>
             </div>
           `;
         } else {
           return `
-            <button onclick="handleCardAction('${menu.id}')" class="px-3 py-1.5 bg-white hover:bg-slate-100 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 flex items-center gap-2 shadow-sm transition-all">
+            <button onclick="loadPage('${menu.id}')" class="px-3 py-1.5 bg-white hover:bg-slate-100 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 flex items-center gap-2 shadow-sm transition-all">
               <i class="${menu.iconClass || 'fas fa-link'} text-emerald-600"></i>
               <span>${menu.title}</span>
             </button>
@@ -486,152 +481,149 @@
       }).join('');
     }
 
-    function handleSearch(keyword) {
-      const clearBtn = document.getElementById('clearSearchBtn');
-      if (keyword.trim() !== '') {
-        clearBtn.classList.remove('hidden');
-        const filtered = filterMenusByKeyword(rootMenus, keyword.toLowerCase());
-        renderGridCards(filtered, true);
-      } else {
-        clearBtn.classList.add('hidden');
-        loadPage(activePageId);
-      }
-    }
-
-    function clearSearch() {
-      document.getElementById('searchInput').value = '';
-      document.getElementById('clearSearchBtn').classList.add('hidden');
-      loadPage(activePageId);
-    }
-
-    function filterMenusByKeyword(menusList, kw) {
-      let results = [];
-      menusList.forEach(m => {
-        if (m.title.toLowerCase().includes(kw) || m.description.toLowerCase().includes(kw) || m.category.toLowerCase().includes(kw)) {
-          results.push(m);
-        }
-        if (m.submenus && m.submenus.length > 0) {
-          results = results.concat(filterMenusByKeyword(m.submenus, kw));
-        }
-      });
-      return results;
-    }
-
     function loadPage(pageId) {
       activePageId = pageId;
-      const breadcrumbBar = document.getElementById('breadcrumbBar');
+      const breadcrumb = document.getElementById('breadcrumbBar');
       const bannerTitle = document.getElementById('bannerTitle');
       const bannerDesc = document.getElementById('bannerDesc');
+      const grid = document.getElementById('cardsGrid');
 
-      if (pageId === 'ROOT') {
-        breadcrumbBar.innerHTML = `
-          <button onclick="loadPage('ROOT')" class="px-3 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-xl text-xs font-bold flex items-center gap-1.5 hover:bg-emerald-100 transition-all">
-            <i class="fas fa-house text-[10px]"></i> Beranda Utama
-          </button>
-        `;
-        bannerTitle.innerText = "Direktori Sistem & Tautan";
-        bannerDesc.innerText = "Silakan pilih menu di atas atau jelajahi modul di bawah ini.";
-        renderGridCards(rootMenus);
-      } else {
+      let currentList = rootMenus;
+      let parentCrumbHtml = `<button onclick="loadPage('ROOT')" class="px-3 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-xl text-xs font-bold flex items-center gap-1.5 hover:bg-emerald-100 transition-all"><i class="fas fa-house text-[10px]"></i> Beranda Utama</button>`;
+
+      if (pageId !== 'ROOT') {
         const found = findMenuById(rootMenus, pageId);
         if (found) {
-          breadcrumbBar.innerHTML = `
-            <button onclick="loadPage('ROOT')" class="px-3 py-1.5 bg-slate-100 text-slate-600 border border-slate-200 rounded-xl text-xs font-bold flex items-center gap-1.5 hover:bg-slate-200 transition-all">
-              <i class="fas fa-house text-[10px]"></i> Beranda
-            </button>
-            <span class="text-slate-300 text-xs">/</span>
-            <span class="px-3 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-xl text-xs font-bold flex items-center gap-1.5">
-              <i class="${found.iconClass}"></i> ${found.title}
-            </span>
-          `;
+          currentList = found.submenus || [];
           bannerTitle.innerText = found.title;
-          bannerDesc.innerText = found.description || "Daftar sub-modul atau tautan pada folder ini.";
-          renderGridCards(found.submenus || []);
+          bannerDesc.innerText = found.description || `Direktori modul sub-halaman di bawah ${found.title}`;
+          parentCrumbHtml += `<span class="text-slate-300">/</span><span class="px-3 py-1.5 bg-slate-100 text-slate-700 rounded-xl text-xs font-bold">${found.title}</span>`;
+        } else {
+          currentList = [];
         }
+      } else {
+        bannerTitle.innerText = "Direktori Sistem & Tautan";
+        bannerDesc.innerText = "Silakan pilih menu di atas atau jelajahi modul di bawah ini.";
       }
-    }
 
-    function findMenuById(list, id) {
-      for (let m of list) {
-        if (m.id === id) return m;
-        if (m.submenus && m.submenus.length > 0) {
-          let found = findMenuById(m.submenus, id);
-          if (found) return found;
-        }
+      breadcrumb.innerHTML = parentCrumbHtml;
+
+      if (searchKeyword) {
+        currentList = searchFlatMenus(rootMenus, searchKeyword);
       }
-      return null;
-    }
 
-    function renderGridCards(items, isSearchResult = false) {
-      const grid = document.getElementById('cardsGrid');
-      
-      if (!items || items.length === 0) {
+      if (currentList.length === 0) {
         grid.innerHTML = `
-          <div class="col-span-full py-12 text-center bg-white border border-slate-200 rounded-3xl">
-            <i class="fas fa-folder-open text-3xl text-slate-300 mb-3"></i>
-            <p class="text-xs font-bold text-slate-500">Tidak ada item / modul yang ditemukan.</p>
+          <div class="col-span-full py-12 text-center text-slate-400 text-xs font-medium bg-white border border-slate-200 rounded-3xl">
+            <i class="fas fa-folder-open text-3xl mb-2 text-slate-300"></i>
+            <p>Tidak ada data modul atau tautan yang tersedia.</p>
           </div>
         `;
         return;
       }
 
-      grid.innerHTML = items.map(m => {
-        const canManage = currentUser && (currentUser.role === 'ADMIN' || currentUser.userId === m.ownerUserId);
+      grid.innerHTML = currentList.map(item => {
+        const canManage = currentUser && (currentUser.role === 'ADMIN' || currentUser.userId === item.ownerUserId);
+        const isFolder = item.type === 'folder';
+
         return `
-          <div class="bg-white border border-slate-200 hover:border-emerald-300 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between group">
+          <div class="bg-white border border-slate-200 rounded-3xl p-5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between group relative">
             <div>
-              <div class="flex justify-between items-start mb-3">
-                <div class="w-10 h-10 rounded-xl bg-slate-100 group-hover:bg-emerald-50 group-hover:text-emerald-600 text-slate-600 flex items-center justify-center transition-colors">
-                  <i class="${m.iconClass || 'fas fa-link'} text-base"></i>
+              <div class="flex items-center justify-between mb-4">
+                <div class="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center justify-center text-lg font-bold shadow-sm group-hover:bg-emerald-600 group-hover:text-white transition-all">
+                  <i class="${item.iconClass || 'fas fa-link'}"></i>
                 </div>
                 <div class="flex items-center space-x-1">
-                  ${m.visibility !== 'UMUM' ? `<span class="text-[9px] bg-amber-50 text-amber-700 border border-amber-200 font-extrabold px-2 py-0.5 rounded-full">${m.visibility}</span>` : ''}
+                  <span class="px-2.5 py-1 rounded-full text-[10px] font-bold ${item.visibility === 'UMUM' ? 'bg-slate-100 text-slate-600' : 'bg-purple-50 text-purple-700 border border-purple-200'}">
+                    ${item.visibility}
+                  </span>
                   ${canManage ? `
-                    <button onclick="openCrudModal('${m.id}')" class="p-1.5 text-slate-400 hover:text-indigo-600 transition-colors"><i class="fas fa-pen-to-square text-xs"></i></button>
-                    <button onclick="executeDeleteMenu('${m.id}')" class="p-1.5 text-slate-400 hover:text-rose-600 transition-colors"><i class="fas fa-trash-can text-xs"></i></button>
+                    <div class="relative dropdown-container">
+                      <button class="w-7 h-7 bg-slate-50 hover:bg-slate-100 text-slate-500 rounded-xl border border-slate-200 flex items-center justify-center text-xs">
+                        <i class="fas fa-ellipsis-vertical"></i>
+                      </button>
+                      <div class="dropdown-box !w-32 right-0">
+                        <button onclick="openCrudModal('${item.id}')" class="w-full text-left px-3 py-1.5 hover:bg-slate-50 text-xs font-semibold text-slate-700 rounded-lg flex items-center gap-2">
+                          <i class="fas fa-pen text-blue-600"></i> Edit
+                        </button>
+                        <button onclick="executeDeleteMenu('${item.id}')" class="w-full text-left px-3 py-1.5 hover:bg-slate-50 text-xs font-semibold text-rose-600 rounded-lg flex items-center gap-2">
+                          <i class="fas fa-trash text-rose-500"></i> Hapus
+                        </button>
+                      </div>
+                    </div>
                   ` : ''}
                 </div>
               </div>
 
-              <h3 class="text-sm font-extrabold text-slate-800 group-hover:text-emerald-600 transition-colors">${m.title}</h3>
-              <p class="text-xs text-slate-500 mt-1 line-clamp-2 leading-relaxed">${m.description || 'Tidak ada deskripsi.'}</p>
+              <h3 class="text-sm font-extrabold text-slate-900 mb-1">${item.title}</h3>
+              <p class="text-xs text-slate-500 line-clamp-2 leading-relaxed mb-4">${item.description || 'Tidak ada deskripsi modul.'}</p>
             </div>
 
-            <div class="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between">
-              <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">${m.category || 'GENERAL'}</span>
-              <button onclick="handleCardAction('${m.id}')" class="px-3 py-1.5 bg-slate-100 group-hover:bg-emerald-600 text-slate-700 group-hover:text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1 shadow-sm">
-                <span>${m.type === 'folder' ? 'Buka Sub' : 'Kunjungi'}</span>
-                <i class="fas fa-arrow-right text-[10px]"></i>
-              </button>
+            <div class="pt-3 border-t border-slate-100 flex items-center justify-between">
+              <span class="text-[10px] font-bold text-slate-400 uppercase">${item.category || 'General'}</span>
+              ${isFolder ? `
+                <button onclick="loadPage('${item.id}')" class="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5">
+                  <span>Buka Folder</span><i class="fas fa-arrow-right text-[10px]"></i>
+                </button>
+              ` : `
+                <a href="${item.targetUrl}" target="_blank" class="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5">
+                  <span>Akses Link</span><i class="fas fa-external-link-alt text-[10px]"></i>
+                </a>
+              `}
             </div>
           </div>
         `;
       }).join('');
     }
 
-    function handleCardAction(menuId) {
-      const item = findMenuById(rootMenus, menuId);
-      if (!item) return;
-
-      if (item.type === 'folder') {
-        loadPage(item.id);
-      } else {
-        if (item.targetUrl && item.targetUrl !== '#') {
-          window.open(item.targetUrl, '_blank');
-        } else {
-          alert("Tautan URL belum diatur.");
+    function findMenuById(list, id) {
+      for (let item of list) {
+        if (item.id === id) return item;
+        if (item.submenus && item.submenus.length > 0) {
+          const found = findMenuById(item.submenus, id);
+          if (found) return found;
         }
       }
+      return null;
     }
 
-    /* AUTH LOGIC */
+    function searchFlatMenus(list, keyword) {
+      let results = [];
+      const lower = keyword.toLowerCase();
+      list.forEach(item => {
+        if (item.title.toLowerCase().includes(lower) || (item.description && item.description.toLowerCase().includes(lower))) {
+          results.push(item);
+        }
+        if (item.submenus && item.submenus.length > 0) {
+          results = results.concat(searchFlatMenus(item.submenus, keyword));
+        }
+      });
+      return results;
+    }
+
+    function handleSearch(val) {
+      searchKeyword = val.trim();
+      const clearBtn = document.getElementById('clearSearchBtn');
+      if (searchKeyword) clearBtn.classList.remove('hidden');
+      else clearBtn.classList.add('hidden');
+      loadPage(activePageId);
+    }
+
+    function clearSearch() {
+      document.getElementById('searchInput').value = '';
+      searchKeyword = '';
+      document.getElementById('clearSearchBtn').classList.add('hidden');
+      loadPage(activePageId);
+    }
+
     function handleAuthClick() {
       if (currentUser) {
-        if (confirm("Apakah Anda yakin ingin logout?")) {
-          currentUser = null;
+        if (confirm("Apakah Anda ingin keluar (logout) dari sistem?")) {
           localStorage.removeItem('portal_currentUser');
+          currentUser = null;
           clearAppCache();
-          fetchData(true);
+          showGlobalSpinner("Logging out...");
+          fetchData(true).then(() => hideGlobalSpinner());
         }
       } else {
         document.getElementById('loginModal').classList.remove('hidden');
@@ -644,65 +636,65 @@
 
     async function executeLogin(e) {
       e.preventDefault();
-      showGlobalSpinner("Verifikasi login...");
+      const username = document.getElementById('loginUser').value;
+      const password = document.getElementById('loginPass').value;
 
-      const u = document.getElementById('loginUser').value;
-      const p = document.getElementById('loginPass').value;
+      closeLoginModal();
+      showGlobalSpinner("Autentikasi akun...");
 
       try {
-        const res = await fetch(GAS_API_URL, {
+        const response = await fetch(GAS_API_URL, {
           method: 'POST',
-          body: JSON.stringify({ action: 'login', username: u, password: p })
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({ action: 'login', username, password })
         });
-        const result = await res.json();
+        const result = await response.json();
 
         if (result.status === 'success') {
           currentUser = result.user;
           localStorage.setItem('portal_currentUser', JSON.stringify(currentUser));
-          closeLoginModal();
           clearAppCache();
           await fetchData(true);
+          alert("Login berhasil! Selamat datang, " + currentUser.fullName);
         } else {
-          alert(result.message);
+          alert("Login gagal: " + result.message);
         }
       } catch (err) {
-        alert("Gagal terhubung ke server.");
+        alert("Terjadi kesalahan jaringan saat proses login.");
       } finally {
         hideGlobalSpinner();
       }
     }
 
-    /* CRUD MENU LOGIC */
-    function openCrudModal(menuId = null, parentId = "") {
-      document.getElementById('formId').value = "";
-      document.getElementById('formParentId').value = parentId;
-      document.getElementById('formTitle').value = "";
-      document.getElementById('formCategory').value = "";
-      document.getElementById('formVisibility').value = "UMUM";
-      document.getElementById('formType').value = "link";
-      document.getElementById('formIcon').value = "fas fa-link";
-      document.getElementById('formUrl').value = "#";
-      document.getElementById('formDesc').value = "";
+    function openCrudModal(menuId = null) {
+      document.getElementById('crudModal').classList.remove('hidden');
+      document.getElementById('formId').value = '';
+      document.getElementById('formParentId').value = activePageId !== 'ROOT' ? activePageId : '';
+      document.getElementById('formTitle').value = '';
+      document.getElementById('formCategory').value = '';
+      document.getElementById('formVisibility').value = 'UMUM';
+      document.getElementById('formType').value = 'link';
+      document.getElementById('formIcon').value = 'fas fa-link';
+      document.getElementById('formUrl').value = '#';
+      document.getElementById('formDesc').value = '';
 
       if (menuId) {
-        const item = findMenuById(rootMenus, menuId);
-        if (item) {
-          document.getElementById('formId').value = item.id;
-          document.getElementById('formParentId').value = item.parentId || "";
-          document.getElementById('formTitle').value = item.title;
-          document.getElementById('formCategory').value = item.category;
-          document.getElementById('formVisibility').value = item.visibility;
-          document.getElementById('formType').value = item.type;
-          document.getElementById('formIcon').value = item.iconClass;
-          document.getElementById('formUrl').value = item.targetUrl;
-          document.getElementById('formDesc').value = item.description;
-          document.getElementById('crudModalTitle').innerText = "Edit Menu Modul";
+        document.getElementById('crudModalTitle').innerText = "Edit Menu / Modul";
+        const targetMenu = findMenuById(rootMenus, menuId);
+        if (targetMenu) {
+          document.getElementById('formId').value = targetMenu.id;
+          document.getElementById('formParentId').value = targetMenu.parentId || '';
+          document.getElementById('formTitle').value = targetMenu.title;
+          document.getElementById('formCategory').value = targetMenu.category;
+          document.getElementById('formVisibility').value = targetMenu.visibility;
+          document.getElementById('formType').value = targetMenu.type;
+          document.getElementById('formIcon').value = targetMenu.iconClass;
+          document.getElementById('formUrl').value = targetMenu.targetUrl;
+          document.getElementById('formDesc').value = targetMenu.description;
         }
       } else {
-        document.getElementById('crudModalTitle').innerText = parentId ? "Tambah Sub Menu" : "Tambah Menu Utama";
+        document.getElementById('crudModalTitle').innerText = "Tambah Menu Baru";
       }
-
-      document.getElementById('crudModal').classList.remove('hidden');
     }
 
     function closeCrudModal() {
@@ -711,10 +703,7 @@
 
     async function executeSaveMenu(e) {
       e.preventDefault();
-      showGlobalSpinner("Menyimpan data menu...");
-
       const payload = {
-        action: 'saveMenu',
         id: document.getElementById('formId').value,
         parentId: document.getElementById('formParentId').value,
         title: document.getElementById('formTitle').value,
@@ -727,67 +716,74 @@
         ownerUserId: currentUser ? currentUser.userId : "PUBLIC"
       };
 
+      closeCrudModal();
+      showGlobalSpinner("Menyimpan perubahan menu...");
+
       try {
-        const res = await fetch(GAS_API_URL, {
+        const response = await fetch(GAS_API_URL, {
           method: 'POST',
-          body: JSON.stringify(payload)
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify(Object.assign({ action: 'saveMenu' }, payload))
         });
-        const result = await res.json();
+        const result = await response.json();
 
         if (result.status === 'success') {
-          closeCrudModal();
           clearAppCache();
           await fetchData(true);
-        } else {
           alert(result.message);
+        } else {
+          alert("Gagal menyimpan: " + result.message);
         }
       } catch (err) {
-        alert("Gagal menyimpan data.");
+        alert("Kesalahan jaringan saat menyimpan menu.");
       } finally {
         hideGlobalSpinner();
       }
     }
 
-    async function executeDeleteMenu(id) {
-      if (!confirm("Apakah Anda yakin ingin menghapus menu ini?")) return;
-      showGlobalSpinner("Menghapus menu...");
+    async function executeDeleteMenu(menuId) {
+      if (!confirm("Apakah Anda yakin ingin menghapus menu / modul ini?")) return;
+
+      showGlobalSpinner("Menghapus data...");
 
       try {
-        const res = await fetch(GAS_API_URL, {
+        const response = await fetch(GAS_API_URL, {
           method: 'POST',
-          body: JSON.stringify({ action: 'deleteMenu', id: id })
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({ action: 'deleteMenu', id: menuId })
         });
-        const result = await res.json();
+        const result = await response.json();
 
         if (result.status === 'success') {
           clearAppCache();
           await fetchData(true);
-        } else {
           alert(result.message);
+        } else {
+          alert("Gagal menghapus: " + result.message);
         }
       } catch (err) {
-        alert("Gagal menghapus data.");
+        alert("Kesalahan jaringan saat menghapus menu.");
       } finally {
         hideGlobalSpinner();
       }
     }
 
-    /* USER MANAGEMENT LOGIC (ADMIN ONLY) */
     async function openUserManagementModal() {
+      document.getElementById('userManagementModal').classList.remove('hidden');
       showGlobalSpinner("Memuat daftar user...");
+
       try {
-        const res = await fetch(`${GAS_API_URL}?action=getUsers&_t=${Date.now()}`);
-        const result = await res.json();
+        const response = await fetch(`${GAS_API_URL}?action=getUsers&_t=${Date.now()}`);
+        const result = await response.json();
 
         if (result.status === 'success') {
           usersList = result.data;
           renderUserTable();
-          document.getElementById('userManagementModal').classList.remove('hidden');
         } else {
-          alert(result.message);
+          alert("Gagal memuat user: " + result.message);
         }
       } catch (err) {
-        alert("Gagal memuat daftar user.");
+        alert("Kesalahan jaringan.");
       } finally {
         hideGlobalSpinner();
       }
@@ -799,56 +795,66 @@
 
     function renderUserTable() {
       const tbody = document.getElementById('userTableBody');
+      if (usersList.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-slate-400">Belum ada user terdaftar.</td></tr>`;
+        return;
+      }
+
       tbody.innerHTML = usersList.map(u => `
-        <tr class="hover:bg-slate-50 transition-colors">
-          <td class="p-3 font-semibold text-slate-800">${u.userId}</td>
-          <td class="p-3">${u.username}</td>
+        <tr class="hover:bg-slate-50">
+          <td class="p-3 font-mono text-[11px] font-bold text-slate-600">${u.userId}</td>
+          <td class="p-3 font-semibold text-slate-800">${u.username}</td>
           <td class="p-3">${u.fullName}</td>
-          <td class="p-3"><span class="px-2 py-0.5 bg-purple-50 text-purple-700 border border-purple-200 font-extrabold text-[10px] rounded-full">${u.role}</span></td>
+          <td class="p-3">
+            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${u.role === 'ADMIN' ? 'bg-purple-50 text-purple-700 border border-purple-200' : 'bg-slate-100 text-slate-600'}">
+              ${u.role}
+            </span>
+          </td>
           <td class="p-3 text-center space-x-1">
-            <button onclick="openUserFormModal('${u.userId}')" class="p-1 text-slate-400 hover:text-indigo-600"><i class="fas fa-pen-to-square"></i></button>
-            <button onclick="executeDeleteUser('${u.userId}')" class="p-1 text-slate-400 hover:text-rose-600"><i class="fas fa-trash-can"></i></button>
+            <button onclick="editUser('${u.userId}')" class="px-2.5 py-1 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg font-bold text-[11px]">Edit</button>
+            <button onclick="deleteUser('${u.userId}')" class="px-2.5 py-1 bg-rose-50 text-rose-600 hover:bg-rose-100 rounded-lg font-bold text-[11px]">Hapus</button>
           </td>
         </tr>
       `).join('');
     }
 
     function openUserFormModal(userId = null) {
-      document.getElementById('userFormId').value = "";
+      document.getElementById('userFormModal').classList.remove('hidden');
+      document.getElementById('userFormId').value = '';
+      document.getElementById('userFormUsername').value = '';
+      document.getElementById('userFormPassword').value = '';
+      document.getElementById('userFormFullName').value = '';
+      document.getElementById('userFormRole').value = 'USER_KHUSUS';
       document.getElementById('userFormId').disabled = false;
-      document.getElementById('userFormUsername').value = "";
-      document.getElementById('userFormPassword').value = "";
-      document.getElementById('userFormFullName').value = "";
-      document.getElementById('userFormRole').value = "USER_KHUSUS";
+      document.getElementById('userFormTitle').innerText = "Tambah User Baru";
 
       if (userId) {
-        const u = usersList.find(x => x.userId === userId);
-        if (u) {
-          document.getElementById('userFormId').value = u.userId;
-          document.getElementById('userFormId').disabled = true;
-          document.getElementById('userFormUsername').value = u.username;
-          document.getElementById('userFormPassword').value = u.password;
-          document.getElementById('userFormFullName').value = u.fullName;
-          document.getElementById('userFormRole').value = u.role;
+        const found = usersList.find(u => u.userId === userId);
+        if (found) {
           document.getElementById('userFormTitle').innerText = "Edit User";
+          document.getElementById('userFormId').value = found.userId;
+          document.getElementById('userFormId').disabled = true;
+          document.getElementById('userFormUsername').value = found.username;
+          document.getElementById('userFormPassword').value = found.password;
+          document.getElementById('userFormFullName').value = found.fullName;
+          document.getElementById('userFormRole').value = found.role;
         }
       } else {
-        document.getElementById('userFormTitle').innerText = "Tambah User Baru";
+        document.getElementById('userFormId').value = "USR-" + Date.now();
       }
-
-      document.getElementById('userFormModal').classList.remove('hidden');
     }
 
     function closeUserFormModal() {
       document.getElementById('userFormModal').classList.add('hidden');
     }
 
+    function editUser(userId) {
+      openUserFormModal(userId);
+    }
+
     async function executeSaveUser(e) {
       e.preventDefault();
-      showGlobalSpinner("Menyimpan user...");
-
       const payload = {
-        action: 'saveUser',
         userId: document.getElementById('userFormId').value,
         username: document.getElementById('userFormUsername').value,
         password: document.getElementById('userFormPassword').value,
@@ -856,44 +862,51 @@
         role: document.getElementById('userFormRole').value
       };
 
+      closeUserFormModal();
+      showGlobalSpinner("Menyimpan data user...");
+
       try {
-        const res = await fetch(GAS_API_URL, {
+        const response = await fetch(GAS_API_URL, {
           method: 'POST',
-          body: JSON.stringify(payload)
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify(Object.assign({ action: 'saveUser' }, payload))
         });
-        const result = await res.json();
+        const result = await response.json();
 
         if (result.status === 'success') {
-          closeUserFormModal();
+          alert(result.message);
           openUserManagementModal();
         } else {
-          alert(result.message);
+          alert("Gagal menyimpan user: " + result.message);
         }
       } catch (err) {
-        alert("Gagal menyimpan user.");
+        alert("Kesalahan jaringan.");
       } finally {
         hideGlobalSpinner();
       }
     }
 
-    async function executeDeleteUser(userId) {
-      if (!confirm(`Hapus user ${userId}?`)) return;
+    async function deleteUser(userId) {
+      if (!confirm("Apakah Anda yakin ingin menghapus user ini?")) return;
+
       showGlobalSpinner("Menghapus user...");
 
       try {
-        const res = await fetch(GAS_API_URL, {
+        const response = await fetch(GAS_API_URL, {
           method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
           body: JSON.stringify({ action: 'deleteUser', userId: userId })
         });
-        const result = await res.json();
+        const result = await response.json();
 
         if (result.status === 'success') {
+          alert(result.message);
           openUserManagementModal();
         } else {
-          alert(result.message);
+          alert("Gagal menghapus user: " + result.message);
         }
       } catch (err) {
-        alert("Gagal menghapus user.");
+        alert("Kesalahan jaringan.");
       } finally {
         hideGlobalSpinner();
       }
