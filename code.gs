@@ -1,5 +1,5 @@
 /**
- * PORTAL DMS ENGINE V2 - BACKEND API (Google Apps Script)
+ * PORTAL DMS ENGINE V2 - OPTIMIZED BACKEND API (Google Apps Script)
  */
 
 function doGet(e) {
@@ -11,10 +11,10 @@ function doPost(e) {
 }
 
 function handleRequest(e) {
-  var action = e.parameter.action;
+  var action = e && e.parameter ? e.parameter.action : "";
   var postData = {};
   
-  if (e.postData && e.postData.contents) {
+  if (e && e.postData && e.postData.contents) {
     try {
       postData = JSON.parse(e.postData.contents);
       if (!action) action = postData.action;
@@ -80,7 +80,6 @@ function getMenus(userId, role) {
       createdAt: String(row[10] || "")
     };
 
-    // Filter Hak Akses (Visibility)
     var isVisible = false;
     if (menuObj.visibility === "UMUM") {
       isVisible = true;
@@ -97,7 +96,6 @@ function getMenus(userId, role) {
     }
   }
 
-  // Susun Hirarki (Parent - Submenu)
   var tree = [];
   var menuMap = {};
 
@@ -124,23 +122,28 @@ function saveMenu(p) {
   var now = new Date().toISOString();
 
   if (menuId) {
-    // UPDATE DATA EKSISTING
     for (var i = 1; i < data.length; i++) {
       if (String(data[i][0]) === String(menuId)) {
-        sheet.getRange(i + 1, 2).setValue(p.parentId || "");
-        sheet.getRange(i + 1, 3).setValue(p.title);
-        sheet.getRange(i + 1, 4).setValue(p.category || "");
-        sheet.getRange(i + 1, 5).setValue(p.type || "link");
-        sheet.getRange(i + 1, 6).setValue(p.iconClass || "fas fa-link");
-        sheet.getRange(i + 1, 7).setValue(p.targetUrl || "#");
-        sheet.getRange(i + 1, 8).setValue(p.description || "");
-        sheet.getRange(i + 1, 10).setValue(p.visibility || "UMUM");
+        // Optimasi: Update menggunakan array 2D tunggal setRange() alih-alih berulang kali
+        var updatedRow = [
+          data[i][0],
+          p.parentId || "",
+          p.title,
+          p.category || "",
+          p.type || "link",
+          p.iconClass || "fas fa-link",
+          p.targetUrl || "#",
+          p.description || "",
+          data[i][8], // Pertahankan ownerUserId asli
+          p.visibility || "UMUM",
+          data[i][10]
+        ];
+        sheet.getRange(i + 1, 1, 1, updatedRow.length).setValues([updatedRow]);
         return { status: "success", message: "Data menu berhasil diperbarui." };
       }
     }
   }
 
-  // INSERT DATA BARU
   var newId = "MENU-" + new Date().getTime();
   sheet.appendRow([
     newId,
@@ -216,10 +219,8 @@ function saveUser(p) {
 
   for (var i = 1; i < data.length; i++) {
     if (String(data[i][0]) === String(p.userId)) {
-      sheet.getRange(i + 1, 2).setValue(p.username);
-      sheet.getRange(i + 1, 3).setValue(p.password);
-      sheet.getRange(i + 1, 4).setValue(p.fullName);
-      sheet.getRange(i + 1, 5).setValue(p.role);
+      var updatedRow = [p.userId, p.username, p.password, p.fullName, p.role];
+      sheet.getRange(i + 1, 1, 1, updatedRow.length).setValues([updatedRow]);
       return { status: "success", message: "Data User berhasil diperbarui." };
     }
   }
